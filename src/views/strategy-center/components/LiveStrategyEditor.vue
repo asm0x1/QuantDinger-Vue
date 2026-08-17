@@ -278,7 +278,10 @@ const notificationTargets = settings => ({
   telegram_bot_token: settings.telegram_bot_token || '',
   discord: settings.discord_webhook || '',
   webhook: settings.webhook_url || '',
-  webhook_token: settings.webhook_token || ''
+  webhook_token: settings.webhook_token || '',
+  bark_device_key: settings.bark_device_key || '',
+  bark_server_url: settings.bark_server_url || 'https://api.day.app',
+  bark_custom_params: settings.bark_custom_params || ''
 })
 
 export default {
@@ -304,7 +307,7 @@ export default {
       sourceContractError: false,
       originalStrategy: null,
       notificationSettings: {},
-      notificationChannels: ['browser', 'email', 'telegram', 'discord', 'webhook', 'phone'],
+      notificationChannels: ['browser', 'email', 'telegram', 'discord', 'webhook', 'phone', 'bark'],
       model: this.defaultModel()
     }
   },

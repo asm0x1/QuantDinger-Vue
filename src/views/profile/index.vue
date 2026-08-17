@@ -415,6 +415,11 @@
                             <a-icon type="api" /> Webhook
                           </a-checkbox>
                         </a-col>
+                        <a-col :span="8">
+                          <a-checkbox value="bark">
+                            <a-icon type="notification" /> Bark
+                          </a-checkbox>
+                        </a-col>
                       </a-row>
                     </a-checkbox-group>
                   </a-form-item>
@@ -557,6 +562,52 @@
                       <span>{{ webhookSigningSecretHint }}</span>
                     </div>
                   </a-form-item>
+
+                  <!-- Bark 推送（iOS） -->
+                  <a-divider v-if="notificationSettings.default_channels && notificationSettings.default_channels.includes('bark')">
+                    {{ $t('profile.notifications.barkSection') || 'Bark 推送（iOS）' }}
+                  </a-divider>
+                  <template v-if="notificationSettings.default_channels && notificationSettings.default_channels.includes('bark')">
+                    <a-form-item :label="$t('profile.notifications.barkDeviceKey') || 'Bark Device Key'">
+                      <a-input-password
+                        v-decorator="['bark_device_key', { initialValue: notificationSettings.bark_device_key }]"
+                        :placeholder="$t('profile.notifications.barkDeviceKeyPlaceholder') || '在 Bark App 中获取 Device Key'"
+                      >
+                        <a-icon slot="prefix" type="mobile" />
+                      </a-input-password>
+                      <div class="field-hint">
+                        <a-icon type="info-circle" />
+                        <span>
+                          {{ $t('profile.notifications.barkDeviceKeyHint') || '在 iOS 的 Bark App 中获取，用于接收推送通知' }}
+                          <a href="https://apps.apple.com/app/bark-custom-notifications/id1403753865" target="_blank" rel="noopener noreferrer">App Store</a>
+                        </span>
+                      </div>
+                    </a-form-item>
+                    <a-form-item :label="$t('profile.notifications.barkServerUrl') || 'Bark 服务器地址'">
+                      <a-input
+                        v-decorator="['bark_server_url', { initialValue: notificationSettings.bark_server_url || 'https://api.day.app' }]"
+                        :placeholder="$t('profile.notifications.barkServerUrlPlaceholder') || 'https://api.day.app'"
+                      >
+                        <a-icon slot="prefix" type="cloud-server" />
+                      </a-input>
+                      <div class="field-hint">
+                        <a-icon type="info-circle" />
+                        <span>{{ $t('profile.notifications.barkServerUrlHint') || '默认使用官方服务器 https://api.day.app，自建服务器请填写您的地址' }}</span>
+                      </div>
+                    </a-form-item>
+                    <a-form-item :label="$t('profile.notifications.barkCustomParams') || '自定义参数'">
+                      <a-input
+                        v-decorator="['bark_custom_params', { initialValue: notificationSettings.bark_custom_params || '' }]"
+                        :placeholder="$t('profile.notifications.barkCustomParamsPlaceholder') || '例如: {&quot;url&quot;: &quot;https://example.com&quot;, &quot;icon&quot;: &quot;https://example.com/icon.png&quot;, &quot;level&quot;: &quot;timeSensitive&quot;}'"
+                      >
+                        <a-icon slot="prefix" type="setting" />
+                      </a-input>
+                      <div class="field-hint">
+                        <a-icon type="info-circle" />
+                        <span>{{ $t('profile.notifications.barkCustomParamsHint') || 'JSON 格式，可选字段：url（点击跳转链接）、icon（通知图标）、level（时效性：active/timeSensitive/passive）、isArchive（是否归档）、sound（铃声）、group（分组）' }}</span>
+                      </div>
+                    </a-form-item>
+                  </template>
 
                   <a-form-item>
                     <a-button type="primary" :loading="savingNotifications" @click="handleSaveNotifications">
@@ -848,7 +899,10 @@ export default {
         discord_webhook: '',
         webhook_url: '',
         webhook_token: '',
-        webhook_signing_secret: ''
+        webhook_signing_secret: '',
+        bark_device_key: '',
+        bark_server_url: 'https://api.day.app',
+        bark_custom_params: ''
       },
       savingNotifications: false,
       testingNotification: false,
@@ -1581,7 +1635,10 @@ export default {
             discord_webhook: res.data.discord_webhook || '',
             webhook_url: res.data.webhook_url || '',
             webhook_token: res.data.webhook_token || '',
-            webhook_signing_secret: res.data.webhook_signing_secret || ''
+            webhook_signing_secret: res.data.webhook_signing_secret || '',
+            bark_device_key: res.data.bark_device_key || '',
+            bark_server_url: res.data.bark_server_url || 'https://api.day.app',
+            bark_custom_params: res.data.bark_custom_params || ''
           }
           // Update form values
           this.$nextTick(() => {
@@ -1594,7 +1651,10 @@ export default {
               discord_webhook: this.notificationSettings.discord_webhook,
               webhook_url: this.notificationSettings.webhook_url,
               webhook_token: this.notificationSettings.webhook_token,
-              webhook_signing_secret: this.notificationSettings.webhook_signing_secret
+              webhook_signing_secret: this.notificationSettings.webhook_signing_secret,
+              bark_device_key: this.notificationSettings.bark_device_key,
+              bark_server_url: this.notificationSettings.bark_server_url,
+              bark_custom_params: this.notificationSettings.bark_custom_params
             })
           })
         }
@@ -1646,7 +1706,10 @@ export default {
             discord_webhook: values.discord_webhook || '',
             webhook_url: values.webhook_url || '',
             webhook_token: values.webhook_token || '',
-            webhook_signing_secret: values.webhook_signing_secret || ''
+            webhook_signing_secret: values.webhook_signing_secret || '',
+            bark_device_key: values.bark_device_key || '',
+            bark_server_url: values.bark_server_url || '',
+            bark_custom_params: values.bark_custom_params || ''
           })
           if (res.code === 1) {
             this.$message.success(this.$t('profile.notifications.saveSuccess') || '通知设置保存成功')
@@ -1698,6 +1761,10 @@ export default {
         this.$message.warning(this.$t('profile.notifications.fillWebhook') || '请填写 Webhook URL')
         return
       }
+      if (channels.includes('bark') && !values.bark_device_key) {
+        this.$message.warning(this.$t('profile.notifications.fillBark') || '请填写 Bark Device Key')
+        return
+      }
 
       this.testingNotification = true
       try {
@@ -1709,7 +1776,11 @@ export default {
           phone: values.phone || '',
           discord_webhook: values.discord_webhook || '',
           webhook_url: values.webhook_url || '',
-          webhook_token: values.webhook_token || ''
+          webhook_token: values.webhook_token || '',
+          webhook_signing_secret: values.webhook_signing_secret || '',
+          bark_device_key: values.bark_device_key || '',
+          bark_server_url: values.bark_server_url || '',
+          bark_custom_params: values.bark_custom_params || ''
         })
 
         if (saveRes.code !== 1) {
